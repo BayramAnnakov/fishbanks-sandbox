@@ -92,7 +92,7 @@ This folder ships a `CLAUDE.md` / `AGENTS.md` so your agent already knows the en
 |---|---|
 | `index.html` | the sandbox UI (sliders, presets, live charts) |
 | `fishbanks.js` | the simulation engine — pure functions, the source of truth |
-| `draw.js` | tiny canvas chart helpers (used by `index.html` only) |
+| `FISHBANKS-SPEC.md` | full model + multiplayer-architecture spec (Part 1 ships; Part 2 is the buildable pattern) |
 | `explore.mjs` | headless policy explorer + your starting point for extensions |
 | `MANUAL.md` | full step-by-step instruction manual (run, read, extend, troubleshoot) |
 | `CLAUDE.md` / `AGENTS.md` | context for your AI coding agent |

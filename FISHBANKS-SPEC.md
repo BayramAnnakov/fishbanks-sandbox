@@ -173,18 +173,111 @@ room/<code> = {
 2. Facilitator hits **Advance**. The client rebuilds engine state from the room doc, runs `stepRound` (Part 1), and writes back: new `ocean`, per-team `cash/fleet`, a pushed `history` entry, and reset decisions; `round++`, `phase → playing|debrief`.
 3. The realtime store pushes the new doc to every client, which re-renders for its role. State is **server-authoritative**; a rejoining player just re-reads.
 
+**Room-doc ↔ engine field mapping** (the room schema in §2.3 is *not* the engine schema in Part 1 — map it explicitly):
+
+| Room doc (§2.3) | Engine (Part 1) | Note |
+|---|---|---|
+| `ocean.fish` | `state.fish` | the only ocean field the engine stores; `density` / `catchPerShip` are **returned** by `stepRound`, recompute them on write-back |
+| `teams.<slot>.{cash,shipsPort,shipsSea,bankrupt}` | `state.teams[i].{cash,shipsPort,shipsSea,bankrupt}` | 1:1 |
+| `teams.<slot>.pending` | `state.teams[i].pendingShips` | **name differs — the only rename** |
+| `teams.<slot>.decision` | `decisions[i]` | drop `submitted`; pass `{buy,toSea,sendNewToSea}` only |
+| (a stable, ordered list of slot keys) | array index `i` | fix the order **once** at game start (see subtleties) |
+
+**Worked `advanceRound` (the whole round-trip, against the real Part 1 signatures):**
+
+```js
+import { fishBanksParams, stepRound, fbForceCollapseDecisions } from './fishbanks.js';
+const P = fishBanksParams();
+
+// `slots`: a STABLE, ordered array of the room's team slot-keys, frozen at game start.
+function advanceRound(room, slots, { forceCollapse = false } = {}) {
+  // 1) room doc -> engine state (note the ONE rename: room `pending` -> engine `pendingShips`)
+  const state = {
+    fish: room.ocean.fish,
+    teams: slots.map(k => {
+      const t = room.teams[k];
+      return { cash: t.cash, shipsPort: t.shipsPort, shipsSea: t.shipsSea,
+               pendingShips: t.pending || [], bankrupt: t.bankrupt };
+    }),
+  };
+
+  // 2) decisions array, parallel to `slots`. Drop `submitted`; a team that never
+  //    submitted defaults to "repeat last decision" (the straggler rule, §2.8).
+  let decisions = slots.map(k => {
+    const d = room.teams[k].decision || room.teams[k].lastDecision || {};
+    return { buy: d.buy || 0, toSea: d.toSea || 0, sendNewToSea: d.sendNewToSea !== false };
+  });
+
+  // 2b) Act 2: if a summit rule is active, enforce it on the decisions BEFORE stepping
+  //     — the engine knows nothing about rules (see §2.7; the quota variant is the
+  //     shipped `enforceCap()` in explore.mjs). Facilitator force-collapse overrides all.
+  if (forceCollapse) decisions = fbForceCollapseDecisions(state);
+  else if (room.summit?.active) decisions = applySummit(decisions, state, room.summit.rule);
+
+  // 3) run the SAME engine the sandbox runs. Mutates `state`; returns this round's result.
+  const result = stepRound(state, decisions, P);
+
+  // 4) write back to the room doc (server-authoritative)
+  room.ocean = { fish: result.fish, density: result.density, catchPerShip: result.catchPerShip };
+  slots.forEach((k, i) => {
+    const rt = result.teams[i], st = state.teams[i], t = room.teams[k];
+    t.cash = rt.cash; t.shipsSea = rt.shipsSea; t.shipsPort = rt.shipsPort; t.bankrupt = rt.bankrupt;
+    t.pending = st.pendingShips;                    // delay queue lives on the MUTATED state, not on result
+    t.lastDecision = decisions[i];                  // for the straggler default next round
+    t.decision = { buy: 0, toSea: 0, sendNewToSea: true, submitted: false };
+  });
+  room.history.push({
+    round: room.round, fish: result.fish, density: result.density, catchPerShip: result.catchPerShip,
+    teams: slots.map((k, i) => ({ name: room.teams[k].name, cash: result.teams[i].cash,
+      shipsSea: result.teams[i].shipsSea, shipsPort: result.teams[i].shipsPort,
+      bankrupt: result.teams[i].bankrupt, roundCatch: result.teams[i].roundCatch })),
+    summitActive: !!room.summit?.active, summitRule: room.summit?.rule || null,
+  });
+  room.round += 1;
+  room.phase = room.round > room.maxRounds ? 'debrief' : 'playing';
+  return room;   // persist this whole doc back to your realtime store in ONE write
+}
+```
+
+**Three subtleties the prose hides:**
+- **Read the delay queue back from `state`, not `result`.** `stepRound` returns `result.teams[i]` with cash/fleet/bankrupt/roundCatch only — the build-delay queue (`pendingShips`) lives on the **mutated `state.teams[i]`**. Persist it from there or you lose every in-flight ship order.
+- **Slot order is load-bearing.** `stepRound` addresses teams by array index *and* the delay queue persists across rounds — so freeze the `slots` ordering at game start and never reshuffle it (a dropped/rejoined player keeps its index).
+- **One write, not N.** Resolve the whole round in memory, then write the doc once — so clients never observe a half-stepped room (some teams advanced, others not).
+
 ### 2.5 The hidden-state chokepoint (the pedagogy, in code)
 
-The team view is **physically incapable** of reading `ocean.fish / density / catchPerShip`. It derives "your boats' average" purely from the team's **own** `roundCatch ÷ ownShipsSea ÷ yearsPerRound`. The hidden stock is the whole lesson: players must **infer** the commons from catch-per-ship — exactly as real fisheries do (no one counts the fish; they watch catch-per-vessel).
+The team view is **incapable** of reading `ocean.fish / density / catchPerShip`. It derives "your boats' average" purely from the team's **own** `roundCatch ÷ ownShipsSea ÷ yearsPerRound`. The hidden stock is the whole lesson: players must **infer** the commons from catch-per-ship — exactly as real fisheries do (no one counts the fish; they watch catch-per-vessel).
 
-### 2.6 Realtime + hosting + classroom mechanics
+> **What "incapable" actually requires (don't ship it as a view-only trick).** In a single shared room doc, hiding the ocean in the player UI is *not* enough — a curious player can read the raw doc. To make it real, the realtime store must **enforce** it: either (a) read-rules that deny player clients access to `ocean`, to other teams' `decision`, and to unrevealed `history` fields; or (b) split the doc — a public team-scoped path each phone can read + a **facilitator/spectator-only** path holding `ocean` and the full history, merged only at the debrief reveal. Treat the chokepoint as an **access-control requirement**, not a CSS one.
+
+### 2.6 Joining & rejoining (slot claim)
+
+A phone claims a team slot with a **compare-and-set**, so two players racing for the same team can't both win:
+
+1. Read `teams/<slot>/clientId`. If empty, **atomically** write your own `clientId` (use the store's transaction / CAS primitive — a plain read-then-write races and double-seats a team). If it already holds another `clientId`, the slot is taken; offer the next free one.
+2. Persist your `clientId` in `localStorage`. On refresh or reconnect, match it back to your slot and **re-read** the doc — state is server-authoritative (§2.4), so a rejoin needs no extra server state and your array index (§2.4 subtleties) is preserved.
+3. **Facilitator and spectator are roles, not slots** — they read the room doc (the facilitator also writes it) but never occupy a `teams` entry, so they don't consume a company.
+
+### 2.7 Act 2 — the summit (negotiated rule)
+
+After the debrief reveal, an optional second act turns the lesson from *demonstrated* into *actionable*: the cohort negotiates one shared rule at a "summit," then **replays under it** to see whether changing the structure beats the tragedy.
+
+- State: `phase: 'act2'`, `summit: { active: true, rule }`.
+- `summit.rule` is an **open enum** — the three escapes of §1.7, as data:
+  - `{ type:'quota', maxFleetTotal:45 }` — a binding cap on total ships at sea (a *rule*, Meadows #5). **This is the variant already implemented** as `enforceCap()` in `explore.mjs`.
+  - `{ type:'tax', perShipPerRound:N }` — a fee that bites where the optimizer lives (#12), shifting the payoff without banning anything.
+  - `{ type:'goal', objective:'sustainable_yield' }` — change *what teams are told to maximize* (#3) rather than constraining the move set.
+- **How a rule is enforced:** the engine has **no concept** of a summit rule — the round-resolution layer applies it by transforming each decision **before** `stepRound`, via the `applySummit(decisions, state, rule)` hook in §2.4. The `quota` case is `explore.mjs`'s `enforceCap` almost verbatim (cap `buy` and `toSea` so the cohort fleet stays under a sustainable total); `tax`/`goal` are the natural agent-extension exercises.
+- **The Ostrom catch (§1.7), in code:** a rule only works because the resolution layer **re-derives and enforces it server-side every round** — not because a team promised. A `summit.rule` that the layer reads but doesn't apply is exactly "a quota nobody monitors": the tragedy with extra steps.
+
+### 2.8 Realtime + hosting + classroom mechanics
 
 - Vanilla HTML/JS + `<canvas>` charts; **a realtime DB** (we used Firebase Realtime Database — any realtime KV/document store works); static hosting (we used fly.io — any works).
 - **Kahoot-style join:** a click-to-join link with the room code embedded, pasted into chat (no read-aloud PINs, no lobby-straggler tax).
 - **Straggler default:** on round-timer expiry a missing team's input defaults to *repeat last decision*; one frozen phone never stalls the shared ocean.
 - **Presenter-pace lock:** the facilitator owns every round reveal; teams can't self-advance or peek ahead.
 
-### 2.7 Build it yourself
+### 2.9 Build it yourself
 
 The engine in this repo (`fishbanks.js` → `stepRound`) is the **same** one the live game used. Wrap it with any realtime sync layer + the schema in §2.3 and you have the multiplayer game. Hand this spec + `CLAUDE.md` to your agent and ask it to build the sync layer.
 

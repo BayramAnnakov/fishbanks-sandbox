@@ -30,7 +30,7 @@ You can use it three ways:
 |---|---|---|
 | `index.html` | The sandbox UI (sliders, presets, charts) | rarely |
 | `fishbanks.js` | **The engine** — pure simulation functions. Source of truth. | carefully (§7) |
-| `draw.js` | Canvas chart helpers (used by the UI only) | no |
+| `FISHBANKS-SPEC.md` | Full model + multiplayer-architecture spec | — |
 | `explore.mjs` | Headless policy explorer — **your main playground** | yes |
 | `package.json` | `npm start` / `npm run explore` shortcuts | no |
 | `README.md` | Quickstart + challenge list | — |
@@ -143,7 +143,7 @@ This folder ships `CLAUDE.md` (Claude Code) and `AGENTS.md` (Codex) so your agen
 | **`node: command not found`** | Install Node 18+ (nodejs.org or `brew install node`). |
 | **Charts look squished on mobile** | The UI is responsive but designed for a laptop; rotate or widen the window. |
 | **I changed `fishbanks.js` and numbers look wrong** | You likely edited a tuned constant/table. Revert and add a *new* parameter instead (§7). |
-| **Want the latest engine** | If the course updates the model, re-copy `fishbanks.js` + `draw.js` from the source `app/` folder. |
+| **Want the latest engine** | If the course updates the model, re-copy `fishbanks.js` from the source — and refresh the inline copy inside `index.html` (the UI runs its own inlined engine, §4). |
 
 ---
 

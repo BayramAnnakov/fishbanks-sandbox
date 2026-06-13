@@ -1,12 +1,11 @@
 # Fish Banks — agent context
 
-This is a **tragedy-of-the-commons simulation** from an AI + Systems Thinking course. A user (a course participant) will ask you to help them play with it, understand it, or extend it. This file is your map. (Codex: same content lives in `AGENTS.md`.)
+This is a **tragedy-of-the-commons simulation** from an AI + Systems Thinking course. A user (a course participant) will ask you to help them play with it, understand it, or extend it. This file is your map. (The same content is mirrored in `CLAUDE.md` and `AGENTS.md`.)
 
 ## What's here
 - `fishbanks.js` — the **engine**. Pure ES module, no dependencies, no I/O. The source of truth.
-- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). **Self-contained**: it carries its *own inlined copy* of the engine + chart code, so it runs from `file://` on a double-click (no server, no module loading). It does **not** import `fishbanks.js` / `draw.js` at runtime — those are kept as the standalone source for Node + your agent. (Consequence: editing `fishbanks.js` changes `explore.mjs` and Node, **not** the UI. To change the UI, edit the inline block in `index.html` too — or re-externalize the imports.)
+- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). **Self-contained**: it carries its *own inlined copy* of the engine + chart code, so it runs from `file://` on a double-click (no server, no module loading). It does **not** import `fishbanks.js` at runtime — that file is the standalone source for Node + your agent. (Consequence: editing `fishbanks.js` changes `explore.mjs` and Node, **not** the UI. To change the UI, edit the inline block in `index.html` too — or re-externalize the import.)
 - `explore.mjs` — a headless Node script that runs policy experiments and prints results. **This is the best place to add new experiments.**
-- `draw.js` — minimal canvas helpers, used only by `index.html`.
 
 ## Engine API (fishbanks.js)
 ```js

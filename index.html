@@ -121,9 +121,10 @@
 </div>
 
 <script>
-/* ===== Engine + chart code inlined (from fishbanks.js / draw.js) so this page works
-   when opened directly as a file (double-click), with no local server. The standalone
-   fishbanks.js / draw.js / explore.mjs files are still here for Node + your AI agent. ===== */
+/* ===== Engine + chart code inlined here so this page works when opened directly
+   as a file (double-click), with no local server. The standalone fishbanks.js +
+   explore.mjs are the source of truth for Node + your AI agent; this inline copy
+   is what the UI actually runs (edit both if you change engine behavior). ===== */
 function fishBanksParams() {
   return {
     carryingCapacity: 6000, initialFish: 4800,
