@@ -4,9 +4,9 @@ This is a **tragedy-of-the-commons simulation** from an AI + Systems Thinking co
 
 ## What's here
 - `fishbanks.js` — the **engine**. Pure ES module, no dependencies, no I/O. The source of truth.
-- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). Imports `fishbanks.js` + `draw.js`.
+- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). **Self-contained**: it carries its *own inlined copy* of the engine + chart code, so it runs from `file://` on a double-click (no server, no module loading). It does **not** import `fishbanks.js` / `draw.js` at runtime — those are kept as the standalone source for Node + your agent. (Consequence: editing `fishbanks.js` changes `explore.mjs` and Node, **not** the UI. To change the UI, edit the inline block in `index.html` too — or re-externalize the imports.)
 - `explore.mjs` — a headless Node script that runs policy experiments and prints results. **This is the best place to add new experiments.**
-- `draw.js` — minimal canvas helpers, used only by `index.html`.
+- `draw.js` — minimal canvas helpers — the standalone source the UI's inline charts were copied from (the shipped `index.html` carries its own inline copy; `draw.js` is for Node/agent reference).
 
 ## Engine API (fishbanks.js)
 ```js

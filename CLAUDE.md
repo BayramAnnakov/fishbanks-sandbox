@@ -4,7 +4,7 @@ This is a **tragedy-of-the-commons simulation** from an AI + Systems Thinking co
 
 ## What's here
 - `fishbanks.js` — the **engine**. Pure ES module, no dependencies, no I/O. The source of truth.
-- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). Imports `fishbanks.js` + `draw.js`.
+- `index.html` — a browser sandbox UI (sliders, presets, canvas charts). **Self-contained**: it carries its *own inlined copy* of the engine + chart code, so it runs from `file://` on a double-click (no server, no module loading). It does **not** import `fishbanks.js` / `draw.js` at runtime — those are kept as the standalone source for Node + your agent. (Consequence: editing `fishbanks.js` changes `explore.mjs` and Node, **not** the UI. To change the UI, edit the inline block in `index.html` too — or re-externalize the imports.)
 - `explore.mjs` — a headless Node script that runs policy experiments and prints results. **This is the best place to add new experiments.**
 - `draw.js` — minimal canvas helpers, used only by `index.html`.
 
@@ -32,7 +32,7 @@ fbForceCollapseDecisions(state)   // returns max-greed decisions for every team
 
 ## How to run
 - Headless experiments: `node explore.mjs` (Node 18+, no install).
-- UI: serve the folder (`python3 -m http.server 8080` or `npx serve`) and open it — ES modules won't load from `file://`.
+- UI: **just open `index.html`** (double-click / `file://`) — it's self-contained, no server needed. A server (`npm start` → `python3 -m http.server 8080`, or `npx serve`) is only required if you re-externalize the imports (i.e. delete the inline engine block and `import` from `fishbanks.js` instead).
 
 ## Adding a policy (the clean pattern)
 Most extensions are either (a) a new `decision(teamIndex, round, state)` strategy, or (b) a tweak inside the per-year loop of `stepRound` (e.g. a scarcity price, a tax, a quota cap). Prefer composing in `explore.mjs` (wrap `simulate`) over forking the engine. When you change biology or economics, **always print a before/after** (collapse round, cohort cash, min density) so the user sees the effect — never silently alter behavior.

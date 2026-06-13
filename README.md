@@ -4,11 +4,19 @@ The simulation you played in the workshop, packaged so you can **play with it an
 
 It's a tragedy-of-the-commons model: each fishing company chases cash; collectively they can overfish a shared ocean to collapse. The lesson isn't "be nice" — it's that the *structure* (a shared stock + a build delay + a "maximize my cash" goal) drives the collapse, and only the right **rule** prevents it.
 
+![The ocean you couldn't see — the hidden fish stock and catch-per-ship, revealed in the debrief](./screenshots/reveal.png)
+
+*The debrief reveal from the live workshop game: the hidden ocean (cyan) and catch-per-ship (orange) that no team could see while playing. Catch-per-ship was already sliding while cash still looked great — the early warning a real fishery actually gets. The single-player sandbox in this repo reproduces the same engine.*
+
 > Want the detailed step-by-step (running locally, reading the charts, troubleshooting, extending)? See **[`MANUAL.md`](./MANUAL.md)**.
 >
 > Want the full **model + multiplayer-architecture spec** (parameters, equations, the Meadows leverage map, the 3 escapes, and how the live classroom game is built)? See **[`FISHBANKS-SPEC.md`](./FISHBANKS-SPEC.md)**.
 
 > **Your cohort never collapsed it** (room 8305: ocean survived, +$23.6M). But that was *low fishing pressure + luck*, not safety. You averaged ~1 ship bought/team/round — below the threshold. **If any one team had floored it to buy-5, the shared ocean dies and everyone goes bankrupt.** Your restraint was only as good as the least restrained player. This package lets you prove that to yourself in 10 seconds.
+
+<p align="center"><img src="./screenshots/player-view.png" width="320" alt="A team's private phone view: its own cash and fleet, but never the ocean stock"></p>
+
+*What a team saw on its own phone during the live game: its cash, its fleet, its last haul — but **never the ocean stock**. Players had to infer the shared commons from catch-per-ship alone. That hidden-state chokepoint is the whole lesson; the multiplayer architecture that enforces it is documented in [`FISHBANKS-SPEC.md`](./FISHBANKS-SPEC.md) Part 2.*
 
 ---
 
