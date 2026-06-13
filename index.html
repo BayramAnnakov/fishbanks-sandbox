@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fish Banks — Policy Sandbox</title>
+<style>
+  :root{
+    --bg1:#0B1120; --bg2:#0F172A; --bg3:#1E293B;
+    --cyan:#06B6D4; --purple:#8B5CF6; --orange:#F97316;
+    --green:#10B981; --red:#EF4444; --white:#F1F5F9; --muted:#64748B;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(900px 500px at 70% -10%, #13203a, var(--bg1)) fixed;
+    color:var(--white); font-family:"DM Sans",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+    padding:max(18px,env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:980px; margin:0 auto}
+  h1{font-size:22px; margin:0 0 2px; letter-spacing:-.01em}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 18px}
+  .sub b{color:#94A3B8; font-weight:600}
+  .panel{background:rgba(15,23,42,.7); border:1px solid rgba(148,163,184,.14);
+    border-radius:14px; padding:16px 18px; margin-bottom:14px}
+  .row{display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end}
+  .ctl{flex:1 1 200px; min-width:170px}
+  label{display:block; font-size:12px; color:#94A3B8; margin-bottom:7px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em}
+  label .v{color:var(--cyan); font-variant-numeric:tabular-nums; text-transform:none; letter-spacing:0}
+  input[type=range]{width:100%; accent-color:var(--cyan); height:22px}
+  .toggles{display:flex; gap:10px; flex-wrap:wrap}
+  .toggle{display:flex; align-items:center; gap:8px; background:var(--bg3);
+    border:1px solid rgba(148,163,184,.18); border-radius:10px; padding:9px 13px;
+    cursor:pointer; font-size:13.5px; user-select:none; transition:.15s}
+  .toggle:hover{border-color:rgba(148,163,184,.4)}
+  .toggle.on{border-color:var(--orange); background:rgba(249,115,22,.12); color:#FED7AA}
+  .toggle.on.green{border-color:var(--green); background:rgba(16,185,129,.12); color:#A7F3D0}
+  .toggle input{accent-color:var(--orange)}
+  .presets{display:flex; gap:9px; flex-wrap:wrap; margin-top:2px}
+  .preset{background:var(--bg3); border:1px solid rgba(148,163,184,.18); color:#CBD5E1;
+    border-radius:999px; padding:8px 15px; font-size:13px; cursor:pointer; transition:.15s;
+    font-family:inherit}
+  .preset:hover{border-color:var(--cyan); color:#fff; background:rgba(6,182,212,.1)}
+  .verdict{display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;
+    padding:13px 18px; border-radius:12px; margin-bottom:14px; font-size:14px;
+    border:1px solid rgba(148,163,184,.16); background:rgba(15,23,42,.6)}
+  .verdict.dead{border-color:rgba(239,68,68,.5); background:rgba(239,68,68,.08)}
+  .verdict.alive{border-color:rgba(16,185,129,.45); background:rgba(16,185,129,.07)}
+  .verdict .big{font-size:16px; font-weight:700}
+  .verdict .stat{color:#94A3B8; font-size:13px}
+  .verdict .stat b{color:var(--white); font-variant-numeric:tabular-nums; font-weight:600}
+  .dead .big{color:#FCA5A5} .alive .big{color:#6EE7B7}
+  .charts{display:grid; grid-template-columns:1fr; gap:14px}
+  .chartbox{background:rgba(15,23,42,.6); border:1px solid rgba(148,163,184,.12);
+    border-radius:12px; padding:12px 14px 6px}
+  .chartbox h3{margin:0 0 6px; font-size:12.5px; color:#94A3B8; font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; display:flex; gap:8px; align-items:center}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block}
+  .small-charts{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  canvas{width:100%; display:block}
+  .lesson{color:#94A3B8; font-size:13.5px; margin-top:16px; padding:14px 18px;
+    border-left:3px solid var(--purple); background:rgba(139,92,246,.06); border-radius:0 10px 10px 0}
+  .lesson b{color:#C4B5FD}
+  .note{font-size:12px; color:var(--muted); margin-top:5px}
+  @media(max-width:640px){ .small-charts{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐟 Fish Banks — Policy Sandbox</h1>
+  <p class="sub">Play with the <b>same model</b> you ran in the workshop. Crank the dials, watch the ocean — and find out what actually prevents the collapse. <span class="note" style="display:inline">No login, nothing shared, just you and the engine.</span></p>
+
+  <div class="panel">
+    <div class="row">
+      <div class="ctl">
+        <label>Fishing companies <span class="v" id="lab-teams">3</span></label>
+        <input type="range" id="teams" min="2" max="6" step="1" value="3">
+      </div>
+      <div class="ctl">
+        <label>Aggression — ships each buys / round <span class="v" id="lab-buy">2</span></label>
+        <input type="range" id="buy" min="0" max="10" step="1" value="2">
+      </div>
+      <div class="ctl" style="flex:1 1 320px">
+        <label>Policy</label>
+        <div class="toggles">
+          <label class="toggle" id="tg-defector"><input type="checkbox" id="defector"> One company defects (floors it to 10)</label>
+          <label class="toggle green" id="tg-enforce"><input type="checkbox" id="enforce"> Enforced quota</label>
+        </div>
+      </div>
+    </div>
+    <div class="presets">
+      <button class="preset" data-preset="cohort">▶ Your cohort (room 8305, real moves)</button>
+      <button class="preset" data-preset="defect">😈 …now one of you defects</button>
+      <button class="preset" data-preset="floor">🔥 Everyone floors it</button>
+      <button class="preset" data-preset="quota">🛡 Enforced quota</button>
+    </div>
+    <div class="note" id="mode-note">&nbsp;</div>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+
+  <div class="charts">
+    <div class="chartbox">
+      <h3><span class="dot" style="background:var(--cyan)"></span>Fish stock (the ocean)</h3>
+      <canvas id="c-fish" height="230"></canvas>
+    </div>
+    <div class="small-charts">
+      <div class="chartbox">
+        <h3><span class="dot" style="background:var(--orange)"></span>Catch per ship — the leading signal</h3>
+        <canvas id="c-cps" height="170"></canvas>
+      </div>
+      <div class="chartbox">
+        <h3><span class="dot" style="background:var(--green)"></span>Total cohort cash</h3>
+        <canvas id="c-cash" height="170"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="lesson" id="lesson"></div>
+</div>
+
+<script>
+/* ===== Engine + chart code inlined (from fishbanks.js / draw.js) so this page works
+   when opened directly as a file (double-click), with no local server. The standalone
+   fishbanks.js / draw.js / explore.mjs files are still here for Node + your AI agent. ===== */
+function fishBanksParams() {
+  return {
+    carryingCapacity: 6000, initialFish: 4800,
+    shipCost: 25000, portCost: 7000, seaCost: 25000, fishPrice: 1000,
+    startCash: 250000, buildDelay: 1, yearsPerRound: 3, maxShipCatch: 50,
+    startShipsPort: 2, startShipsSea: 2, recommendedTeams: 4, recommendedRounds: 8,
+    birthCoefTable:    [0, 0.0476, 0.335, 0.866, 0.89, 0.884, 0.793, 0.689, 0.098, 0.055, 0.018],
+    catchPerShipTable: [2, 7, 12, 18, 25, 31, 37, 42, 46, 49, 50],
+  };
+}
+function fbInterp(table, x) {
+  if (x <= 0) return table[0];
+  if (x >= 1) return table[table.length - 1];
+  const pos = x * 10, i = Math.floor(pos), f = pos - i;
+  return table[i] + (table[i + 1] - table[i]) * f;
+}
+function fbNewTeam(params) {
+  return { cash: params.startCash, shipsPort: params.startShipsPort, shipsSea: params.startShipsSea, pendingShips: [], bankrupt: false };
+}
+function fbNewState(params, nTeams) {
+  const teams = [];
+  for (let i = 0; i < nTeams; i++) teams.push(fbNewTeam(params));
+  return { fish: params.initialFish, teams };
+}
+function stepRound(state, decisions, params) {
+  const P = params, K = P.carryingCapacity, n = state.teams.length;
+  let i, k, b, c, y;
+  for (i = 0; i < n; i++) {
+    const t = state.teams[i], d = decisions[i] || {};
+    if (t.bankrupt) continue;
+    const keep = []; let delivered = 0;
+    for (k = 0; k < t.pendingShips.length; k++) {
+      const p = t.pendingShips[k]; p.ready -= 1;
+      if (p.ready <= 0) delivered += p.count; else keep.push(p);
+    }
+    t.pendingShips = keep;
+    if (delivered > 0) { if (d.sendNewToSea) t.shipsSea += delivered; else t.shipsPort += delivered; }
+    const buy = Math.max(0, Math.min(10, d.buy || 0));
+    if (buy > 0) { t.cash -= buy * P.shipCost; t.pendingShips.push({ count: buy, ready: P.buildDelay }); }
+    const toSea = d.toSea || 0;
+    if (toSea > 0) { const m = Math.min(toSea, t.shipsPort); t.shipsPort -= m; t.shipsSea += m; }
+    else if (toSea < 0) { const m2 = Math.min(-toSea, t.shipsSea); t.shipsSea -= m2; t.shipsPort += m2; }
+  }
+  const roundCatch = new Array(n).fill(0), roundRevenue = new Array(n).fill(0);
+  let density = 0, cps = 0;
+  for (y = 0; y < P.yearsPerRound; y++) {
+    density = state.fish / K;
+    cps = Math.min(fbInterp(P.catchPerShipTable, density), P.maxShipCatch);
+    let totalSea = 0;
+    for (b = 0; b < n; b++) totalSea += state.teams[b].bankrupt ? 0 : state.teams[b].shipsSea;
+    const birth = state.fish * fbInterp(P.birthCoefTable, density);
+    let totalCatch = totalSea * cps;
+    if (totalCatch > state.fish + birth) totalCatch = state.fish + birth;
+    state.fish = Math.max(0, state.fish + birth - totalCatch);
+    for (c = 0; c < n; c++) {
+      const tc = state.teams[c];
+      if (tc.bankrupt) continue;
+      const yearCatch = (totalSea > 0 && tc.shipsSea > 0) ? totalCatch * (tc.shipsSea / totalSea) : 0;
+      const yearRev = yearCatch * P.fishPrice;
+      const costs = tc.shipsPort * P.portCost + tc.shipsSea * P.seaCost;
+      tc.cash += yearRev - costs;
+      roundCatch[c] += yearCatch; roundRevenue[c] += yearRev;
+      if (tc.cash < 0) { tc.bankrupt = true; tc.shipsPort += tc.shipsSea; tc.shipsSea = 0; }
+    }
+  }
+  density = state.fish / K;
+  cps = Math.min(fbInterp(P.catchPerShipTable, density), P.maxShipCatch);
+  return {
+    fish: state.fish, density, catchPerShip: cps,
+    teams: state.teams.map((t, idx) => ({
+      cash: t.cash, shipsSea: t.shipsSea, shipsPort: t.shipsPort, bankrupt: t.bankrupt,
+      roundCatch: roundCatch[idx], roundRevenue: roundRevenue[idx],
+    })),
+  };
+}
+const CHART_PADDING = { top: 20, right: 20, bottom: 30, left: 45 };
+function setupCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  return { ctx, w: rect.width, h: rect.height, dpr };
+}
+function drawGrid(ctx, w, h, ex, padding = CHART_PADDING) {
+  const p = padding, cw = w - p.left - p.right, ch = h - p.top - p.bottom;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+  const gx = (ex.gridLines && ex.gridLines.x) || 10, gy = (ex.gridLines && ex.gridLines.y) || 5;
+  for (let i = 0; i <= gx; i++) { const x = p.left + (i / gx) * cw; ctx.beginPath(); ctx.moveTo(x, p.top); ctx.lineTo(x, p.top + ch); ctx.stroke(); }
+  for (let i = 0; i <= gy; i++) { const y = p.top + (i / gy) * ch; ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.left + cw, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top + ch); ctx.lineTo(p.left + cw, p.top + ch); ctx.stroke();
+  ctx.fillStyle = '#64748B'; ctx.font = '11px Inter, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(String(ex.xRange[0]), p.left, h - 6);
+  ctx.fillText(String(ex.xRange[1]), w - p.right, h - 6);
+  ctx.fillText(ex.xLabel || '', p.left + cw / 2, h - 6);
+  ctx.textAlign = 'right';
+  ctx.fillText(String(ex.yRange[1]), p.left - 6, p.top + 10);
+  ctx.fillText(String(ex.yRange[0]), p.left - 6, p.top + ch + 4);
+  return { cw, ch, p };
+}
+function drawCurve(ctx, points, color, lineWidth, w, h, padding = CHART_PADDING) {
+  if (!points || points.length < 2) return;
+  const p = padding, cw = w - p.left - p.right, ch = h - p.top - p.bottom;
+  ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  points.forEach(([nx, ny], i) => { const x = p.left + nx * cw, y = p.top + ch - ny * ch; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.stroke();
+}
+function drawCurveWithGlow(ctx, points, color, lineWidth, w, h, padding = CHART_PADDING) {
+  ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = lineWidth * 4;
+  drawCurve(ctx, points, color, lineWidth * 0.6, w, h, padding); ctx.restore();
+  drawCurve(ctx, points, color, lineWidth, w, h, padding);
+}
+
+// Room 8305's ACTUAL recorded decisions (13 rounds × 3 teams × [buy, toSea, sendNewToSea]).
+const ACTUAL = [[[1,1,1],[0,1,1],[3,2,1]],[[2,1,1],[2,1,1],[0,0,1]],[[1,1,1],[2,0,1],[0,2,1]],[[1,2,1],[3,2,1],[1,1,1]],[[1,1,1],[3,2,1],[1,0,1]],[[1,1,1],[1,3,1],[2,1,1]],[[2,1,1],[0,3,1],[1,1,1]],[[2,1,1],[2,1,1],[1,2,1]],[[2,2,1],[0,0,1],[1,1,1]],[[2,2,1],[2,2,1],[2,1,1]],[[1,2,1],[0,0,1],[0,1,1]],[[0,2,1],[0,2,1],[0,2,1]],[[0,1,1],[0,0,1],[0,0,1]]];
+
+const P = fishBanksParams();
+const K = P.carryingCapacity;          // 6000
+const MSY = 8688;                       // analytic max sustainable yield / round
+const SUSTAIN_FLEET = 45;               // total ships-at-sea an enforced quota targets
+
+const el = id => document.getElementById(id);
+const state = { mode:'parametric', teams:3, buy:2, defector:false, enforce:false };
+
+// --- enforcement: cap each team's ships-at-sea so the cohort total ≈ SUSTAIN_FLEET ---
+function capPerTeam(n){ return Math.max(2, Math.round(SUSTAIN_FLEET / n)); }
+function applyEnforce(dec, t, cap){
+  const pending = (t.pendingShips||[]).reduce((a,p)=>a+p.count,0);
+  const room = Math.max(0, cap - t.shipsSea);
+  const toSea = dec.toSea > 0 ? Math.min(dec.toSea, room) : dec.toSea;
+  const buy = Math.min(dec.buy, Math.max(0, cap - t.shipsSea - pending));
+  return { buy, toSea, sendNewToSea:true };
+}
+
+function simulate(){
+  const useActual = state.mode === 'actual';
+  const n = useActual ? 3 : state.teams;
+  const ROUNDS = useActual ? ACTUAL.length : 13;
+  const cap = capPerTeam(n);
+  const s = fbNewState(P, n);
+  const fish=[K*P.initialFish/K], dens=[P.initialFish/K], cps=[], cash=[], sea=[];
+  fish[0]=P.initialFish;
+  let collapse=null;
+  for(let r=1;r<=ROUNDS;r++){
+    const decs = s.teams.map((t,i)=>{
+      if(t.bankrupt) return {buy:0,toSea:0};
+      let d;
+      if(useActual){ const a=ACTUAL[r-1][i]; d={buy:a[0],toSea:a[1],sendNewToSea:!!a[2]}; }
+      else d={buy:state.buy, toSea:99, sendNewToSea:true};
+      if(state.defector && i===0) d={buy:10,toSea:99,sendNewToSea:true}; // one company breaks ranks
+      if(state.enforce) d=applyEnforce(d,t,cap);
+      return d;
+    });
+    const res = stepRound(s, decs, P);
+    fish.push(Math.round(res.fish));
+    dens.push(res.fish/K);
+    cps.push(res.catchPerShip||0);
+    sea.push(s.teams.reduce((a,t)=>a+(t.bankrupt?0:t.shipsSea),0));
+    cash.push(s.teams.reduce((a,t)=>a+t.cash,0));
+    if(collapse==null && res.fish<300) collapse=r;
+  }
+  return { n, ROUNDS, fish, dens, cps, cash, sea, collapse,
+    finalCash: cash[cash.length-1],
+    minDens: Math.min(...dens),
+    peakSea: Math.max(...sea),
+    bankrupts: s.teams.filter(t=>t.bankrupt).length, useActual };
+}
+
+// ---------- charts ----------
+function drawFish(r){
+  const cv=el('c-fish'); const {ctx,w,h}=setupCanvas(cv);
+  const ex={xRange:[0,r.ROUNDS], yRange:[0,K], xLabel:'round (3 yrs each)', gridLines:{x:r.ROUNDS,y:6}};
+  drawGrid(ctx,w,h,ex);
+  const pts=r.fish.map((f,i)=>[i/r.ROUNDS, Math.max(0,Math.min(1,f/K))]);
+  const dead = r.collapse!=null;
+  drawCurveWithGlow(ctx,pts, dead?'#EF4444':'#06B6D4', 3.5, w,h);
+  // collapse marker
+  if(dead){
+    const p=CHART_PADDING, cw=w-p.left-p.right, ch=h-p.top-p.bottom;
+    const x=p.left + (r.collapse/r.ROUNDS)*cw;
+    ctx.save(); ctx.strokeStyle='rgba(239,68,68,.55)'; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,p.top); ctx.lineTo(x,p.top+ch); ctx.stroke(); ctx.restore();
+    ctx.fillStyle='#FCA5A5'; ctx.font='600 12px "DM Sans"'; ctx.textAlign='center';
+    ctx.fillText('OCEAN DEAD · R'+r.collapse, x, p.top+14);
+  }
+}
+function drawLine(cvId, series, color, yMax, yLabelTop, opts={}){
+  const cv=el(cvId); const {ctx,w,h}=setupCanvas(cv);
+  const R=series.length;
+  let lo=0, hi=yMax;
+  if(opts.auto){ const vals=series; lo=Math.min(0,...vals); hi=Math.max(...vals, 1); }
+  const ex={xRange:[1,R], yRange:[opts.fmt?opts.fmt(lo):Math.round(lo), opts.fmt?opts.fmt(hi):(yLabelTop??Math.round(hi))],
+            xLabel:'round', gridLines:{x:Math.min(R,13),y:4}};
+  drawGrid(ctx,w,h,ex);
+  const span=(hi-lo)||1;
+  const pts=series.map((v,i)=>[(i)/(R-1||1), Math.max(0,Math.min(1,(v-lo)/span))]);
+  // zero baseline if range crosses 0
+  if(lo<0){
+    const p=CHART_PADDING, cw=w-p.left-p.right, ch=h-p.top-p.bottom;
+    const zy=p.top+ch-((0-lo)/span)*ch;
+    ctx.save(); ctx.strokeStyle='rgba(148,163,184,.3)'; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(p.left,zy); ctx.lineTo(p.left+cw,zy); ctx.stroke(); ctx.restore();
+  }
+  drawCurve(ctx,pts,color,2.5,w,h);
+}
+
+function fmtM(v){ return (v>=0?'+$':'-$') + Math.abs(v/1e6).toFixed(1)+'M'; }
+
+function render(){
+  const r=simulate();
+  // verdict
+  const v=el('verdict');
+  v.className='verdict '+(r.collapse!=null?'dead':'alive');
+  const cpsLo=Math.min(...r.cps).toFixed(0), cpsHi=Math.max(...r.cps).toFixed(0);
+  v.innerHTML = (r.collapse!=null
+      ? `<span class="big">💀 Ocean collapsed at round ${r.collapse}</span>`
+      : `<span class="big">🌊 Ocean survived all ${r.ROUNDS} rounds</span>`)
+    + `<span class="stat">cohort cash <b>${fmtM(r.finalCash)}</b></span>`
+    + `<span class="stat">min density <b>${(r.minDens*100|0)}%</b></span>`
+    + `<span class="stat">peak fleet <b>${r.peakSea}</b> / ~75 cliff</span>`
+    + (r.bankrupts?`<span class="stat">bankruptcies <b style="color:#FCA5A5">${r.bankrupts}</b></span>`:'');
+  drawFish(r);
+  drawLine('c-cps', r.cps, '#F97316', 50, 50);
+  drawLine('c-cash', r.cash, r.finalCash<0?'#EF4444':'#10B981', 0, 0, {auto:true, fmt:fmtM});
+  el('lesson').innerHTML = lessonFor(r);
+}
+
+function lessonFor(r){
+  if(state.mode==='actual' && !state.defector && !state.enforce)
+    return `<b>This is your real game.</b> You survived — but look at min density (${(r.minDens*100|0)}%) and peak catch never hit MSY (${MSY.toLocaleString()} t). You fished <b>under</b> the regrowth rate the whole time. Now flip <b>“one of you defects”</b> and watch what a single buy-everything player does to the shared ocean.`;
+  if(state.defector && r.collapse!=null)
+    return `<b>One defector sank everyone.</b> The other companies didn't change a thing — but one player flooring it drained the shared stock and the ocean died at R${r.collapse}, taking the cohort from riches to ${fmtM(r.finalCash)}. <b>That's the tragedy of the commons</b>: your restraint is only as good as the least restrained player.`;
+  if(state.enforce && r.collapse==null)
+    return `<b>An enforced quota is the cure.</b> Even with everyone wanting to over-fish, a binding cap on the fleet keeps the ocean alive — and the cohort ends richer (${fmtM(r.finalCash)}), not poorer. A quota that's <i>monitored and enforced</i> beats both willpower and a free-for-all. (Turn enforcement off and watch it die.)`;
+  if(r.collapse!=null)
+    return `<b>Overshoot and collapse.</b> At this aggression the fleet blows past the ~75-ship cliff, catch outruns regrowth, and the ocean crashes at R${r.collapse}. Drop aggression to <b>2 or below</b>, or switch on the enforced quota, and it survives.`;
+  return `<b>Sustainable — for now.</b> At this pressure catch stays under the regrowth rate. But the margin is thin: nudge aggression up by one, or let a single company defect, and it tips. Survival here is a threshold you can't see, not a safety net.`;
+}
+
+// ---------- controls ----------
+function syncToggleUI(){
+  el('tg-defector').classList.toggle('on', state.defector);
+  el('tg-enforce').classList.toggle('on', state.enforce);
+  el('lab-teams').textContent = state.mode==='actual' ? '3' : state.teams;
+  el('lab-buy').textContent = state.mode==='actual' ? '—' : state.buy;
+  el('teams').disabled = state.mode==='actual';
+  el('buy').disabled = state.mode==='actual';
+  el('teams').style.opacity = el('buy').style.opacity = state.mode==='actual' ? .4 : 1;
+  el('mode-note').textContent = state.mode==='actual'
+    ? '▶ Using room 8305’s real per-round decisions. Toggles still apply. Move a slider to switch to free play.'
+    : ' ';
+}
+function update(){ syncToggleUI(); render(); }
+
+el('teams').addEventListener('input', e=>{ state.mode='parametric'; state.teams=+e.target.value; update(); });
+el('buy').addEventListener('input', e=>{ state.mode='parametric'; state.buy=+e.target.value; update(); });
+el('defector').addEventListener('change', e=>{ state.defector=e.target.checked; update(); });
+el('enforce').addEventListener('change', e=>{ state.enforce=e.target.checked; update(); });
+
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click', ()=>{
+  const p=b.dataset.preset;
+  if(p==='cohort'){ state.mode='actual'; state.defector=false; state.enforce=false; }
+  if(p==='defect'){ state.mode='actual'; state.defector=true; state.enforce=false; }
+  if(p==='floor'){ state.mode='parametric'; state.teams=4; state.buy=8; state.defector=false; state.enforce=false; el('teams').value=4; el('buy').value=8; }
+  if(p==='quota'){ state.mode='parametric'; state.teams=4; state.buy=8; state.defector=false; state.enforce=true; el('teams').value=4; el('buy').value=8; }
+  el('defector').checked=state.defector; el('enforce').checked=state.enforce;
+  update();
+}));
+
+window.addEventListener('resize', render);
+update();
+</script>
+</body>
+</html>

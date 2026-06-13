@@ -1,0 +1,10 @@
+{
+  "name": "fishbanks-sandbox",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Fish Banks tragedy-of-the-commons model — play and explore policy with your AI coding agent.",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "explore": "node explore.mjs"
+  }
+}
