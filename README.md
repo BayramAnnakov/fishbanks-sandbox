@@ -14,7 +14,7 @@ It's a tragedy-of-the-commons model: each fishing company chases cash; collectiv
 
 ## Play it now (no setup)
 
-Hosted: **https://prediction-gallery.fly.dev/fishbanks-sandbox.html**
+Live (GitHub Pages): **https://bayramannakov.github.io/fishbanks-sandbox/**
 Hit the **▶ Your cohort** preset, then flip **😈 …now one of you defects**.
 
 ## Run it locally
